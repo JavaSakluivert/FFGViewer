@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="FFGViewer.Tests/FFGViewer.Tests.csproj" />
+  <Project Path="FFGViewer/FFGViewer.csproj" />
+</Solution>
