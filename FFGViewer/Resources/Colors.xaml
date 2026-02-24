@@ -16,5 +16,7 @@
     <SolidColorBrush x:Key="BackgroundGrayBrush" Color="{StaticResource BackgroundGray}"/>
     <SolidColorBrush x:Key="ToolbarBgBrush" Color="{StaticResource ToolbarBg}"/>
     <SolidColorBrush x:Key="StatusBarBgBrush" Color="{StaticResource StatusBarBg}"/>
+    <SolidColorBrush x:Key="TextPrimaryBrush" Color="{StaticResource TextPrimary}"/>
+    <SolidColorBrush x:Key="TextSecondaryBrush" Color="{StaticResource TextSecondary}"/>
 
 </ResourceDictionary>

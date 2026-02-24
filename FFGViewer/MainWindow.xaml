@@ -38,10 +38,10 @@
                 <Button Content="グラフクリア" Style="{StaticResource DangerButton}"
                         Command="{Binding ClearGraphCommand}"/>
                 <TextBlock Text="ファイル: " VerticalAlignment="Center" Margin="12,0,4,0"
-                           Foreground="{StaticResource TextSecondary}" FontSize="12"/>
+                           Foreground="{StaticResource TextSecondaryBrush}" FontSize="12"/>
                 <TextBlock Text="{Binding CurrentFilePath.Value}" VerticalAlignment="Center"
                            MaxWidth="400" TextTrimming="CharacterEllipsis"
-                           Foreground="{StaticResource TextPrimary}" FontSize="12"/>
+                           Foreground="{StaticResource TextPrimaryBrush}" FontSize="12"/>
             </StackPanel>
         </Border>
 
@@ -114,7 +114,7 @@
         <Border Grid.Row="2" Background="{StaticResource StatusBarBgBrush}"
                 BorderBrush="#FFBBDEFB" BorderThickness="0,1,0,0" Padding="8,4">
             <TextBlock Text="{Binding StatusMessage.Value}" FontSize="12"
-                       Foreground="{StaticResource TextPrimary}"/>
+                       Foreground="{StaticResource TextPrimaryBrush}"/>
         </Border>
     </Grid>
 </Window>
