@@ -9,6 +9,8 @@ on:
 jobs:
   build-and-release:
     runs-on: windows-latest
+    permissions:
+      contents: write  # GitHub Release の作成・ファイルアップロードに必要
 
     steps:
       # ① リポジトリをチェックアウト
