@@ -40,7 +40,7 @@
                 <TextBlock Text="ファイル: " VerticalAlignment="Center" Margin="12,0,4,0"
                            Foreground="{StaticResource TextSecondaryBrush}" FontSize="12"/>
                 <TextBlock Text="{Binding CurrentFilePath.Value}" VerticalAlignment="Center"
-                           MaxWidth="400" TextTrimming="CharacterEllipsis"
+                           MaxWidth="600" TextTrimming="CharacterEllipsis"
                            Foreground="{StaticResource TextPrimaryBrush}" FontSize="12"/>
             </StackPanel>
         </Border>
@@ -61,6 +61,12 @@
                 <DockPanel>
                     <!-- Buttons at bottom -->
                     <StackPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
+                        <Separator Margin="0,4"/>
+                        <CheckBox Content="間引き表示"
+                                  IsChecked="{Binding IsDecimationEnabled.Value}"
+                                  IsEnabled="{Binding CanToggleDecimation.Value}"
+                                  Margin="0,4,0,8" FontSize="12"
+                                  ToolTip="データ数が15,000点を超えるシリーズをLTTBアルゴリズムで間引いて表示します&#x0a;ピーク計算・エクスポートは元データを使用します"/>
                         <Separator Margin="0,4"/>
                         <TextBlock Text="軸タイトル" FontWeight="Bold" FontSize="12"
                                    Foreground="{StaticResource PrimaryBlueBrush}" Margin="0,4,0,2"/>

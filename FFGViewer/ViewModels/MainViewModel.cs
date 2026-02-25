@@ -1,6 +1,8 @@
 using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Media;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using LiveChartsCore;
 using LiveChartsCore.Defaults;
 using LiveChartsCore.SkiaSharpView;
@@ -13,39 +15,46 @@ using FFGViewer.Services;
 
 namespace FFGViewer.ViewModels;
 
-public class MainViewModel
+public partial class MainViewModel : ObservableObject
 {
     private static readonly SKColor[] Palette =
     [
-        new SKColor(0x42, 0x8B, 0xCA),
-        new SKColor(0xE3, 0x6C, 0x09),
-        new SKColor(0x9B, 0xBB, 0x59),
-        new SKColor(0x80, 0x64, 0xA2),
-        new SKColor(0x4B, 0xAC, 0xC6),
-        new SKColor(0xC0, 0x50, 0x4D),
+        new SKColor(0x42, 0x8B, 0xCA), // Steel Blue
+        new SKColor(0xE3, 0x6C, 0x09), // Orange
+        new SKColor(0x9B, 0xBB, 0x59), // Olive Green
+        new SKColor(0x80, 0x64, 0xA2), // Purple
+        new SKColor(0x4B, 0xAC, 0xC6), // Cyan
+        new SKColor(0xC0, 0x50, 0x4D), // Muted Red
+    ];
+
+    // 補色ペア: 各シリーズの線色と明確に区別できる色
+    private static readonly SKColor[] PeakPalette =
+    [
+        new SKColor(0xE5, 0x39, 0x35), // Vivid Red    (Steel Blue   に対して)
+        new SKColor(0x00, 0x83, 0x8F), // Teal         (Orange       に対して)
+        new SKColor(0xAD, 0x14, 0x57), // Magenta      (Olive Green  に対して)
+        new SKColor(0xF5, 0x7F, 0x17), // Amber        (Purple       に対して)
+        new SKColor(0xE6, 0x4A, 0x19), // Deep Orange  (Cyan         に対して)
+        new SKColor(0x00, 0x69, 0x5C), // Deep Teal    (Muted Red    に対して)
     ];
 
     private readonly IFfgFileService _ffgFileService;
     private readonly ICsvExportService _csvExportService;
     private readonly IExcelExportService _excelExportService;
-    private readonly List<FfgData> _loadedSeries = [];
+    private readonly List<(FfgData Data, SKColor LineColor, SKColor PeakColor)> _loadedSeries = [];
     private int _paletteIndex = 0;
 
-    public ReactivePropertySlim<string> XAxisTitle { get; } = new("変位 (mm)");
-    public ReactivePropertySlim<string> YAxisTitle { get; } = new("荷重 (kN)");
+    public ReactivePropertySlim<string> XAxisTitle { get; } = new("Disp. (mm)");
+    public ReactivePropertySlim<string> YAxisTitle { get; } = new("Load (kN)");
     public ReactivePropertySlim<string> StatusMessage { get; } = new(string.Empty);
     public ReactivePropertySlim<string> CurrentFilePath { get; } = new(string.Empty);
+    public ReactivePropertySlim<bool> IsDecimationEnabled { get; } = new(true);
+    public ReactivePropertySlim<bool> CanToggleDecimation { get; } = new(false);
 
     public ObservableCollection<ISeries> Series { get; } = [];
-    public ObservableCollection<Axis> XAxes { get; } = [new Axis { Name = "変位 (mm)" }];
-    public ObservableCollection<Axis> YAxes { get; } = [new Axis { Name = "荷重 (kN)" }];
+    public ObservableCollection<Axis> XAxes { get; } = [new Axis { Name = "Disp. (mm)" }];
+    public ObservableCollection<Axis> YAxes { get; } = [new Axis { Name = "Load (kN)" }];
     public ObservableCollection<PeakDataRow> PeakDataItems { get; } = [];
-
-    public ReactiveCommand OpenFileCommand { get; }
-    public ReactiveCommand ClearGraphCommand { get; }
-    public ReactiveCommand CopyPeakDataCommand { get; }
-    public ReactiveCommand ExportExcelCommand { get; }
-    public ReactiveCommand ExportCsvCommand { get; }
 
     public MainViewModel(
         IFfgFileService ffgFileService,
@@ -56,21 +65,6 @@ public class MainViewModel
         _csvExportService = csvExportService;
         _excelExportService = excelExportService;
 
-        OpenFileCommand = new ReactiveCommand();
-        OpenFileCommand.Subscribe(_ => OpenFile());
-
-        ClearGraphCommand = new ReactiveCommand();
-        ClearGraphCommand.Subscribe(_ => ClearGraph());
-
-        CopyPeakDataCommand = new ReactiveCommand();
-        CopyPeakDataCommand.Subscribe(_ => CopyPeakData());
-
-        ExportExcelCommand = new ReactiveCommand();
-        ExportExcelCommand.Subscribe(_ => ExportExcel());
-
-        ExportCsvCommand = new ReactiveCommand();
-        ExportCsvCommand.Subscribe(_ => ExportCsv());
-
         XAxisTitle.Subscribe(title =>
         {
             if (XAxes.Count > 0) XAxes[0].Name = title;
@@ -79,29 +73,18 @@ public class MainViewModel
         {
             if (YAxes.Count > 0) YAxes[0].Name = title;
         });
+
+        // _loadedSeries.Count > 0 ガードにより初期化時の無駄な再描画を防ぐ
+        IsDecimationEnabled.Subscribe(_ =>
+        {
+            if (_loadedSeries.Count > 0) RefreshChart(updateStatus: true);
+        });
     }
 
     public void LoadFiles(string[] filePaths)
     {
         foreach (var path in filePaths)
-        {
             LoadSingleFile(path);
-        }
-    }
-
-    private void OpenFile()
-    {
-        var dialog = new OpenFileDialog
-        {
-            Filter = "FFG Files (*.ffg)|*.ffg|All Files (*.*)|*.*",
-            Multiselect = true
-        };
-        if (dialog.ShowDialog() != true) return;
-
-        foreach (var path in dialog.FileNames)
-        {
-            LoadSingleFile(path);
-        }
     }
 
     public void LoadSingleFile(string filePath)
@@ -112,16 +95,25 @@ public class MainViewModel
             var resolvedTitle = ResolveSeriesName(data.Title);
             var resolvedData = data with { Title = resolvedTitle };
 
-            _loadedSeries.Add(resolvedData);
-            CurrentFilePath.Value = filePath;
-            StatusMessage.Value = $"読み込み完了: {resolvedTitle}";
-
-            var color = Palette[_paletteIndex % Palette.Length];
+            var lineColor = Palette[_paletteIndex % Palette.Length];
+            var peakColor = PeakPalette[_paletteIndex % PeakPalette.Length];
             _paletteIndex++;
 
-            AddSeriesToChart(resolvedData, color);
-            AddPeakDataRows(resolvedData, color);
+            _loadedSeries.Add((resolvedData, lineColor, peakColor));
+            CurrentFilePath.Value = filePath;
+
+            AddSeriesToChart(resolvedData, lineColor, peakColor);
+            AddPeakDataRows(resolvedData, lineColor);
             AdjustAxisRange();
+            UpdateCanToggleDecimation();
+
+            var displayCount = IsDecimationEnabled.Value
+                ? DataDecimator.Decimate(resolvedData.DataPoints).Count
+                : resolvedData.DataPoints.Count;
+
+            StatusMessage.Value = displayCount < resolvedData.DataPoints.Count
+                ? $"読み込み完了: {resolvedTitle}（間引き: {resolvedData.DataPoints.Count:N0}点 → {displayCount:N0}点）"
+                : $"読み込み完了: {resolvedTitle}";
         }
         catch (Exception ex)
         {
@@ -129,15 +121,17 @@ public class MainViewModel
         }
     }
 
-    private void AddSeriesToChart(FfgData data, SKColor color)
+    private void AddSeriesToChart(FfgData data, SKColor lineColor, SKColor peakColor)
     {
-        var paint = new SolidColorPaint(color);
+        var displayPoints = IsDecimationEnabled.Value
+            ? DataDecimator.Decimate(data.DataPoints)
+            : data.DataPoints;
 
         var lineSeries = new LineSeries<ObservablePoint>
         {
             Name = data.Title,
-            Values = data.DataPoints.Select(p => new ObservablePoint(p.Displacement, p.Load)).ToList(),
-            Stroke = paint,
+            Values = displayPoints.Select(p => new ObservablePoint(p.Displacement, p.Load)).ToList(),
+            Stroke = new SolidColorPaint(lineColor),
             Fill = null,
             GeometrySize = 0,
             GeometryStroke = null,
@@ -156,7 +150,7 @@ public class MainViewModel
             {
                 Name = $"{data.Title} peak",
                 Values = peakPoints,
-                Fill = paint,
+                Fill = new SolidColorPaint(peakColor),
                 Stroke = null,
                 GeometrySize = 10,
             };
@@ -188,9 +182,9 @@ public class MainViewModel
 
     private void AdjustAxisRange()
     {
-        if (_loadedSeries.Count == 0 || !_loadedSeries.Any(s => s.DataPoints.Count > 0)) return;
+        if (_loadedSeries.Count == 0 || !_loadedSeries.Any(t => t.Data.DataPoints.Count > 0)) return;
 
-        var allPoints = _loadedSeries.SelectMany(s => s.DataPoints).ToList();
+        var allPoints = _loadedSeries.SelectMany(t => t.Data.DataPoints).ToList();
         double minX = allPoints.Min(p => p.Displacement);
         double maxX = allPoints.Max(p => p.Displacement);
         double minY = allPoints.Min(p => p.Load);
@@ -207,6 +201,41 @@ public class MainViewModel
         YAxes[0].MaxLimit = maxY + yPad;
     }
 
+    private void RefreshChart(bool updateStatus = false)
+    {
+        Series.Clear();
+        foreach (var (data, lineColor, peakColor) in _loadedSeries)
+            AddSeriesToChart(data, lineColor, peakColor);
+
+        if (updateStatus && _loadedSeries.Count > 0)
+        {
+            StatusMessage.Value = IsDecimationEnabled.Value
+                ? "間引き表示に切り替えました"
+                : "全データ表示に切り替えました";
+        }
+    }
+
+    private void UpdateCanToggleDecimation()
+    {
+        CanToggleDecimation.Value = _loadedSeries.Any(
+            t => t.Data.DataPoints.Count > DataDecimator.DecimationThreshold);
+    }
+
+    [RelayCommand]
+    private void OpenFile()
+    {
+        var dialog = new OpenFileDialog
+        {
+            Filter = "FFG Files (*.ffg)|*.ffg|All Files (*.*)|*.*",
+            Multiselect = true
+        };
+        if (dialog.ShowDialog() != true) return;
+
+        foreach (var path in dialog.FileNames)
+            LoadSingleFile(path);
+    }
+
+    [RelayCommand]
     private void ClearGraph()
     {
         Series.Clear();
@@ -215,6 +244,7 @@ public class MainViewModel
         _paletteIndex = 0;
         CurrentFilePath.Value = string.Empty;
         StatusMessage.Value = "グラフをクリアしました";
+        CanToggleDecimation.Value = false;
 
         XAxes[0].MinLimit = null;
         XAxes[0].MaxLimit = null;
@@ -222,6 +252,7 @@ public class MainViewModel
         YAxes[0].MaxLimit = null;
     }
 
+    [RelayCommand]
     private void CopyPeakData()
     {
         if (PeakDataItems.Count == 0) return;
@@ -232,6 +263,7 @@ public class MainViewModel
         StatusMessage.Value = "ピークデータをクリップボードにコピーしました";
     }
 
+    [RelayCommand]
     private void ExportExcel()
     {
         if (_loadedSeries.Count == 0) return;
@@ -245,7 +277,7 @@ public class MainViewModel
 
         try
         {
-            _excelExportService.Export(_loadedSeries, dialog.FileName);
+            _excelExportService.Export(_loadedSeries.Select(t => t.Data).ToList(), dialog.FileName);
             StatusMessage.Value = $"Excel エクスポート完了: {dialog.FileName}";
         }
         catch (Exception ex)
@@ -254,6 +286,7 @@ public class MainViewModel
         }
     }
 
+    [RelayCommand]
     private void ExportCsv()
     {
         if (_loadedSeries.Count == 0) return;
@@ -267,7 +300,7 @@ public class MainViewModel
 
         try
         {
-            _csvExportService.Export(_loadedSeries, dialog.FileName);
+            _csvExportService.Export(_loadedSeries.Select(t => t.Data).ToList(), dialog.FileName);
             StatusMessage.Value = $"CSV エクスポート完了: {dialog.FileName}";
         }
         catch (Exception ex)
@@ -278,7 +311,7 @@ public class MainViewModel
 
     private string ResolveSeriesName(string baseTitle)
     {
-        var existingNames = _loadedSeries.Select(s => s.Title).ToHashSet();
+        var existingNames = _loadedSeries.Select(t => t.Data.Title).ToHashSet();
         if (!existingNames.Contains(baseTitle)) return baseTitle;
 
         for (int i = 2; ; i++)

@@ -93,7 +93,8 @@ public class MainViewModelTests
         var vm = CreateSut(mockSvc.Object);
         vm.LoadSingleFile("test.ffg");
 
-        vm.ClearGraphCommand.Execute();
+        // [RelayCommand] により生成される IRelayCommand は ICommand.Execute(object?) を使う
+        vm.ClearGraphCommand.Execute(null);
 
         vm.Series.Should().BeEmpty();
         vm.PeakDataItems.Should().BeEmpty();
@@ -148,7 +149,7 @@ public class MainViewModelTests
         var vm = CreateSut(mockSvc.Object);
         vm.LoadSingleFile("test.ffg");
 
-        vm.ClearGraphCommand.Execute();
+        vm.ClearGraphCommand.Execute(null);
 
         vm.XAxes[0].MinLimit.Should().BeNull();
         vm.XAxes[0].MaxLimit.Should().BeNull();
@@ -197,5 +198,88 @@ public class MainViewModelTests
         vm.LoadSingleFile("nonexistent.ffg");
 
         vm.StatusMessage.Value.Should().Contain("エラー");
+    }
+
+    [Fact]
+    public void IsDecimationEnabled_DefaultsToTrue()
+    {
+        var vm = CreateSut();
+
+        vm.IsDecimationEnabled.Value.Should().BeTrue();
+    }
+
+    [Fact]
+    public void CanToggleDecimation_DefaultsFalse()
+    {
+        var vm = CreateSut();
+
+        vm.CanToggleDecimation.Value.Should().BeFalse();
+    }
+
+    [Fact]
+    public void CanToggleDecimation_RemainsFlaseForSmallSeries()
+    {
+        // 閾値以下（2点）のシリーズを読み込んでも有効にならない
+        var data = MakeSeries("S1", (1, 10), (2, 20));
+        var mockSvc = new Mock<IFfgFileService>();
+        mockSvc.Setup(s => s.Load(It.IsAny<string>())).Returns(data);
+        var vm = CreateSut(mockSvc.Object);
+
+        vm.LoadSingleFile("test.ffg");
+
+        vm.CanToggleDecimation.Value.Should().BeFalse();
+    }
+
+    [Fact]
+    public void CanToggleDecimation_BecomesTrueForLargeSeries()
+    {
+        // 閾値を超えるデータ点数のシリーズを読み込むと有効になる
+        var builder = new FfgDataBuilder().WithTitle("Big").WithFilePath("big.ffg");
+        for (int i = 0; i <= DataDecimator.DecimationThreshold; i++)
+            builder.AddPoint(i * 0.001, i * 0.001);
+        var largeData = builder.Build();
+
+        var mockSvc = new Mock<IFfgFileService>();
+        mockSvc.Setup(s => s.Load(It.IsAny<string>())).Returns(largeData);
+        var vm = CreateSut(mockSvc.Object);
+
+        vm.LoadSingleFile("big.ffg");
+
+        vm.CanToggleDecimation.Value.Should().BeTrue();
+    }
+
+    [Fact]
+    public void ClearGraph_ResetsCanToggleDecimation()
+    {
+        var builder = new FfgDataBuilder().WithTitle("Big").WithFilePath("big.ffg");
+        for (int i = 0; i <= DataDecimator.DecimationThreshold; i++)
+            builder.AddPoint(i * 0.001, i * 0.001);
+        var largeData = builder.Build();
+
+        var mockSvc = new Mock<IFfgFileService>();
+        mockSvc.Setup(s => s.Load(It.IsAny<string>())).Returns(largeData);
+        var vm = CreateSut(mockSvc.Object);
+        vm.LoadSingleFile("big.ffg");
+
+        vm.ClearGraphCommand.Execute(null);
+
+        vm.CanToggleDecimation.Value.Should().BeFalse();
+    }
+
+    [Fact]
+    public void PeakDataRows_UseLineColor_NotPeakColor()
+    {
+        // ピークデータ行（テーブル）はシリーズ線の色で表示する
+        var data = MakeSeries("S1", (1, 10), (2, 20));
+        var mockSvc = new Mock<IFfgFileService>();
+        mockSvc.Setup(s => s.Load("test.ffg")).Returns(data);
+        var vm = CreateSut(mockSvc.Object);
+
+        vm.LoadSingleFile("test.ffg");
+
+        // Steel Blue (#428BCA) が線の色として最初のシリーズに割り当てられる
+        vm.PeakDataItems[0].SeriesColor.R.Should().Be(0x42);
+        vm.PeakDataItems[0].SeriesColor.G.Should().Be(0x8B);
+        vm.PeakDataItems[0].SeriesColor.B.Should().Be(0xCA);
     }
 }
