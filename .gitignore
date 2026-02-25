@@ -29,3 +29,7 @@ node_modules/
 *.user
 *.suo
 .vs/
+
+# ローカル発行フォルダ（CI は ./publish を使用）
+publish/
+publish-test/

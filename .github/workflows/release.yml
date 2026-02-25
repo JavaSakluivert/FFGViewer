@@ -1,0 +1,57 @@
+name: Build and Release
+
+# v1.0.0 のような形式のタグをプッシュしたときに自動実行
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+
+    steps:
+      # ① リポジトリをチェックアウト
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ② .NET 10 SDK をセットアップ
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      # ③ テスト実行（失敗したらリリースしない）
+      - name: Run tests
+        run: dotnet test FFGViewer.Tests/FFGViewer.Tests.csproj --configuration Release --verbosity normal
+
+      # ④ Self-contained 単一ファイルとして発行
+      - name: Publish
+        run: >
+          dotnet publish FFGViewer/FFGViewer.csproj
+          --configuration Release
+          --runtime win-x64
+          --self-contained true
+          -p:PublishSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true
+          -p:EnableCompressionInSingleFile=true
+          --output ./publish
+
+      # ⑤ exe を zip に圧縮（GitHub Release へのアップロード用）
+      - name: Zip artifact
+        run: |
+          $tag = "${{ github.ref_name }}"
+          Compress-Archive -Path ./publish/FFGViewer.exe -DestinationPath "./FFGViewer-${tag}-win-x64.zip"
+        shell: pwsh
+
+      # ⑥ GitHub Release を作成してアップロード
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "FFGViewer ${{ github.ref_name }}"
+          draft: false
+          prerelease: false
+          generate_release_notes: true   # コミット履歴から自動でリリースノートを生成
+          files: "FFGViewer-${{ github.ref_name }}-win-x64.zip"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
