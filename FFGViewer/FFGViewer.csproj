@@ -15,12 +15,6 @@
     <Company>APU Structural Lab</Company>
     <Product>FFGViewer</Product>
     <Description>Hysteresis curve viewer for structural analysis</Description>
-    <!-- 発行設定 -->
-    <PublishSingleFile>true</PublishSingleFile>
-    <SelfContained>true</SelfContained>
-    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
-    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
-    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
   </PropertyGroup>
 
   <ItemGroup>
