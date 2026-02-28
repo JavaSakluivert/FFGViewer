@@ -20,10 +20,11 @@ public class MainViewModelTests
 
     private MainViewModel CreateSut(IFfgFileService? ffgSvc = null)
     {
-        var csvMock = new Mock<ICsvExportService>();
+        var csvFileMock = new Mock<ICsvFileService>();
+        var csvExportMock = new Mock<ICsvExportService>();
         var xlsMock = new Mock<IExcelExportService>();
         ffgSvc ??= new Mock<IFfgFileService>().Object;
-        return new MainViewModel(ffgSvc, csvMock.Object, xlsMock.Object);
+        return new MainViewModel(ffgSvc, csvFileMock.Object, csvExportMock.Object, xlsMock.Object);
     }
 
     [Fact]

@@ -7,6 +7,7 @@ using LiveChartsCore;
 using LiveChartsCore.Defaults;
 using LiveChartsCore.SkiaSharpView;
 using LiveChartsCore.SkiaSharpView.Painting;
+using LiveChartsCore.SkiaSharpView.Painting.Effects;
 using Microsoft.Win32;
 using Reactive.Bindings;
 using SkiaSharp;
@@ -38,7 +39,31 @@ public partial class MainViewModel : ObservableObject
         new SKColor(0x00, 0x69, 0x5C), // Deep Teal    (Muted Red    に対して)
     ];
 
+    // Arial Italic typeface for axis labels (numbers are always ASCII)
+    private static readonly SKTypeface ArialItalicTypeface =
+        SKTypeface.FromFamilyName("Arial", SKFontStyle.Italic);
+    // Material Blue 100 for grid lines (same family as StatusBar background)
+    private static readonly SKColor GridLineColor = new(0xBB, 0xDE, 0xFB);
+
+    private static SolidColorPaint MakeLabelsPaint() =>
+        new SolidColorPaint(SKColors.Black) { SKTypeface = ArialItalicTypeface };
+
+    // Axis title: Arial Italic for ASCII-only text, system default for Japanese/non-ASCII
+    private static SolidColorPaint MakeNamePaint(string title) =>
+        IsLatinOnly(title)
+            ? new SolidColorPaint(SKColors.Black) { SKTypeface = ArialItalicTypeface }
+            : new SolidColorPaint(SKColors.Black);
+
+    private static bool IsLatinOnly(string text) => text.All(c => c <= 0x7E);
+
+    private static SolidColorPaint MakeGridPaint() =>
+        new SolidColorPaint(GridLineColor, 1f)
+        {
+            PathEffect = new DashEffect(new float[] { 4f, 4f }, 0f)
+        };
+
     private readonly IFfgFileService _ffgFileService;
+    private readonly ICsvFileService _csvFileService;
     private readonly ICsvExportService _csvExportService;
     private readonly IExcelExportService _excelExportService;
     private readonly List<(FfgData Data, SKColor LineColor, SKColor PeakColor)> _loadedSeries = [];
@@ -50,28 +75,57 @@ public partial class MainViewModel : ObservableObject
     public ReactivePropertySlim<string> CurrentFilePath { get; } = new(string.Empty);
     public ReactivePropertySlim<bool> IsDecimationEnabled { get; } = new(true);
     public ReactivePropertySlim<bool> CanToggleDecimation { get; } = new(false);
+    public ReactivePropertySlim<bool> CanResetZoom { get; } = new(false);
 
     public ObservableCollection<ISeries> Series { get; } = [];
-    public ObservableCollection<Axis> XAxes { get; } = [new Axis { Name = "Disp. (mm)" }];
-    public ObservableCollection<Axis> YAxes { get; } = [new Axis { Name = "Load (kN)" }];
+    public ObservableCollection<Axis> XAxes { get; } =
+    [
+        new Axis
+        {
+            Name = "Disp. (mm)",
+            LabelsPaint = MakeLabelsPaint(),
+            NamePaint = MakeNamePaint("Disp. (mm)"),
+            SeparatorsPaint = MakeGridPaint(),
+        }
+    ];
+    public ObservableCollection<Axis> YAxes { get; } =
+    [
+        new Axis
+        {
+            Name = "Load (kN)",
+            LabelsPaint = MakeLabelsPaint(),
+            NamePaint = MakeNamePaint("Load (kN)"),
+            SeparatorsPaint = MakeGridPaint(),
+        }
+    ];
     public ObservableCollection<PeakDataRow> PeakDataItems { get; } = [];
 
     public MainViewModel(
         IFfgFileService ffgFileService,
+        ICsvFileService csvFileService,
         ICsvExportService csvExportService,
         IExcelExportService excelExportService)
     {
         _ffgFileService = ffgFileService;
+        _csvFileService = csvFileService;
         _csvExportService = csvExportService;
         _excelExportService = excelExportService;
 
         XAxisTitle.Subscribe(title =>
         {
-            if (XAxes.Count > 0) XAxes[0].Name = title;
+            if (XAxes.Count > 0)
+            {
+                XAxes[0].Name = title;
+                XAxes[0].NamePaint = MakeNamePaint(title);
+            }
         });
         YAxisTitle.Subscribe(title =>
         {
-            if (YAxes.Count > 0) YAxes[0].Name = title;
+            if (YAxes.Count > 0)
+            {
+                YAxes[0].Name = title;
+                YAxes[0].NamePaint = MakeNamePaint(title);
+            }
         });
 
         // _loadedSeries.Count > 0 ガードにより初期化時の無駄な再描画を防ぐ
@@ -91,7 +145,9 @@ public partial class MainViewModel : ObservableObject
     {
         try
         {
-            var data = _ffgFileService.Load(filePath);
+            var data = filePath.EndsWith(".csv", StringComparison.OrdinalIgnoreCase)
+                ? _csvFileService.Load(filePath)
+                : _ffgFileService.Load(filePath);
             var resolvedTitle = ResolveSeriesName(data.Title);
             var resolvedData = data with { Title = resolvedTitle };
 
@@ -106,6 +162,7 @@ public partial class MainViewModel : ObservableObject
             AddPeakDataRows(resolvedData, lineColor);
             AdjustAxisRange();
             UpdateCanToggleDecimation();
+            CanResetZoom.Value = true;
 
             var displayCount = IsDecimationEnabled.Value
                 ? DataDecimator.Decimate(resolvedData.DataPoints).Count
@@ -222,11 +279,18 @@ public partial class MainViewModel : ObservableObject
     }
 
     [RelayCommand]
+    private void ResetZoom()
+    {
+        AdjustAxisRange();
+        StatusMessage.Value = "ズームをリセットしました";
+    }
+
+    [RelayCommand]
     private void OpenFile()
     {
         var dialog = new OpenFileDialog
         {
-            Filter = "FFG Files (*.ffg)|*.ffg|All Files (*.*)|*.*",
+            Filter = "対応ファイル (*.ffg;*.csv)|*.ffg;*.csv|FFG Files (*.ffg)|*.ffg|CSV Files (*.csv)|*.csv|All Files (*.*)|*.*",
             Multiselect = true
         };
         if (dialog.ShowDialog() != true) return;
@@ -245,6 +309,7 @@ public partial class MainViewModel : ObservableObject
         CurrentFilePath.Value = string.Empty;
         StatusMessage.Value = "グラフをクリアしました";
         CanToggleDecimation.Value = false;
+        CanResetZoom.Value = false;
 
         XAxes[0].MinLimit = null;
         XAxes[0].MaxLimit = null;

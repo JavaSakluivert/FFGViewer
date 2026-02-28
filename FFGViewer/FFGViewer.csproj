@@ -9,13 +9,20 @@
     <!-- アプリケーション情報 -->
     <AssemblyName>FFGViewer</AssemblyName>
     <RootNamespace>FFGViewer</RootNamespace>
+    <ApplicationIcon>Resources\Icons\app.ico</ApplicationIcon>
     <Version>1.0.0</Version>
     <AssemblyVersion>1.0.0.0</AssemblyVersion>
     <FileVersion>1.0.0.0</FileVersion>
+    <Authors>Masato Sakurai</Authors>
     <Company>APU Structural Lab</Company>
+    <Copyright>Copyright © 2026 Masato Sakurai, APU Structural Lab</Copyright>
     <Product>FFGViewer</Product>
     <Description>Hysteresis curve viewer for structural analysis</Description>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Resource Include="Resources\Icons\app.ico" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="ClosedXML" Version="0.105.0" />

@@ -7,6 +7,7 @@
         xmlns:conv="clr-namespace:FFGViewer.Resources.Converters"
         mc:Ignorable="d"
         Title="FFGViewer" Height="600" Width="1000" MinWidth="700" MinHeight="400"
+        Icon="Resources/Icons/app.ico"
         AllowDrop="True"
         DragOver="Window_DragOver"
         Drop="Window_Drop">
@@ -32,17 +33,22 @@
         <!-- Row 0: ToolBar -->
         <Border Grid.Row="0" Background="{StaticResource ToolbarBgBrush}"
                 BorderBrush="#FFBBDEFB" BorderThickness="0,0,0,1" Padding="8,6">
-            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                <Button Content="ファイルを開く" Style="{StaticResource PrimaryButton}"
-                        Command="{Binding OpenFileCommand}"/>
-                <Button Content="グラフクリア" Style="{StaticResource DangerButton}"
-                        Command="{Binding ClearGraphCommand}"/>
-                <TextBlock Text="ファイル: " VerticalAlignment="Center" Margin="12,0,4,0"
-                           Foreground="{StaticResource TextSecondaryBrush}" FontSize="12"/>
-                <TextBlock Text="{Binding CurrentFilePath.Value}" VerticalAlignment="Center"
-                           MaxWidth="600" TextTrimming="CharacterEllipsis"
-                           Foreground="{StaticResource TextPrimaryBrush}" FontSize="12"/>
-            </StackPanel>
+            <DockPanel>
+                <Button DockPanel.Dock="Right" Content="About..."
+                        Style="{StaticResource SecondaryButton}"
+                        Click="AboutButton_Click"/>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button Content="ファイルを開く" Style="{StaticResource PrimaryButton}"
+                            Command="{Binding OpenFileCommand}"/>
+                    <Button Content="グラフクリア" Style="{StaticResource DangerButton}"
+                            Command="{Binding ClearGraphCommand}"/>
+                    <TextBlock Text="ファイル: " VerticalAlignment="Center" Margin="12,0,4,0"
+                               Foreground="{StaticResource TextSecondaryBrush}" FontSize="12"/>
+                    <TextBlock Text="{Binding CurrentFilePath.Value}" VerticalAlignment="Center"
+                               MaxWidth="600" TextTrimming="CharacterEllipsis"
+                               Foreground="{StaticResource TextPrimaryBrush}" FontSize="12"/>
+                </StackPanel>
+            </DockPanel>
         </Border>
 
         <!-- Row 1: Main area -->
@@ -67,6 +73,11 @@
                                   IsEnabled="{Binding CanToggleDecimation.Value}"
                                   Margin="0,4,0,8" FontSize="12"
                                   ToolTip="データ数が15,000点を超えるシリーズをLTTBアルゴリズムで間引いて表示します&#x0a;ピーク計算・エクスポートは元データを使用します"/>
+                        <Button Content="ズームリセット" Style="{StaticResource SecondaryButton}"
+                                HorizontalAlignment="Stretch"
+                                IsEnabled="{Binding CanResetZoom.Value}"
+                                Command="{Binding ResetZoomCommand}"
+                                ToolTip="パン・ズーム操作を取り消し、読込直後の表示範囲に戻します"/>
                         <Separator Margin="0,4"/>
                         <TextBlock Text="軸タイトル" FontWeight="Bold" FontSize="12"
                                    Foreground="{StaticResource PrimaryBlueBrush}" Margin="0,4,0,2"/>

@@ -18,6 +18,7 @@ public partial class App : Application
         // DI コンテナ構築
         var services = new ServiceCollection();
         services.AddSingleton<IFfgFileService, FfgFileService>();
+        services.AddSingleton<ICsvFileService, CsvFileService>();
         services.AddSingleton<ICsvExportService, CsvExportService>();
         services.AddSingleton<IExcelExportService, ExcelExportService>();
         services.AddSingleton<MainViewModel>();
@@ -31,11 +32,12 @@ public partial class App : Application
         if (e.Args.Length > 0)
         {
             var vm = _serviceProvider.GetRequiredService<MainViewModel>();
-            var ffgFiles = e.Args
-                .Where(a => a.EndsWith(".ffg", StringComparison.OrdinalIgnoreCase))
+            var supportedFiles = e.Args
+                .Where(a => a.EndsWith(".ffg", StringComparison.OrdinalIgnoreCase)
+                         || a.EndsWith(".csv", StringComparison.OrdinalIgnoreCase))
                 .ToArray();
-            if (ffgFiles.Length > 0)
-                vm.LoadFiles(ffgFiles);
+            if (supportedFiles.Length > 0)
+                vm.LoadFiles(supportedFiles);
         }
     }
 }
