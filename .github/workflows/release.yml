@@ -27,17 +27,20 @@ jobs:
       - name: Run tests
         run: dotnet test FFGViewer.Tests/FFGViewer.Tests.csproj --configuration Release --verbosity normal
 
-      # ④ Self-contained 単一ファイルとして発行
+      # ④ Self-contained 単一ファイルとして発行（タグ名からバージョンを注入）
       - name: Publish
-        run: >
-          dotnet publish FFGViewer/FFGViewer.csproj
-          --configuration Release
-          --runtime win-x64
-          --self-contained true
-          -p:PublishSingleFile=true
-          -p:IncludeNativeLibrariesForSelfExtract=true
-          -p:EnableCompressionInSingleFile=true
-          --output ./publish
+        run: |
+          $version = "${{ github.ref_name }}".TrimStart('v')
+          dotnet publish FFGViewer/FFGViewer.csproj `
+            --configuration Release `
+            --runtime win-x64 `
+            --self-contained true `
+            -p:PublishSingleFile=true `
+            -p:IncludeNativeLibrariesForSelfExtract=true `
+            -p:EnableCompressionInSingleFile=true `
+            -p:Version=$version `
+            --output ./publish
+        shell: pwsh
 
       # ⑤ exe を zip に圧縮（GitHub Release へのアップロード用）
       - name: Zip artifact

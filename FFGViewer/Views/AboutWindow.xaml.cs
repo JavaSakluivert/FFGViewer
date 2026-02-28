@@ -17,7 +17,10 @@ public partial class AboutWindow : Window
         var asm = Assembly.GetExecutingAssembly();
 
         var product = asm.GetCustomAttribute<AssemblyProductAttribute>()?.Product ?? "FFGViewer";
-        var version = asm.GetName().Version?.ToString(3) ?? "1.0.0";
+        // InformationalVersion (<Version> in csproj) is injected by CI from the git tag.
+        // Split on '+' to strip any git-hash suffix (e.g. "1.1.0+abc1234" → "1.1.0").
+        var informationalVersion = asm.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
+        var version = informationalVersion?.Split('+')[0] ?? asm.GetName().Version?.ToString(3) ?? "1.0.0";
         var description = asm.GetCustomAttribute<AssemblyDescriptionAttribute>()?.Description ?? string.Empty;
         var company = asm.GetCustomAttribute<AssemblyCompanyAttribute>()?.Company ?? string.Empty;
         var copyright = asm.GetCustomAttribute<AssemblyCopyrightAttribute>()?.Copyright ?? string.Empty;
