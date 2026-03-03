@@ -115,7 +115,8 @@ public partial class MainWindow : Window
         var files = (string[])e.Data.GetData(DataFormats.FileDrop);
         var supportedFiles = files
             .Where(f => f.EndsWith(".ffg", StringComparison.OrdinalIgnoreCase)
-                     || f.EndsWith(".csv", StringComparison.OrdinalIgnoreCase))
+                     || f.EndsWith(".csv", StringComparison.OrdinalIgnoreCase)
+                     || f.EndsWith(".xlsx", StringComparison.OrdinalIgnoreCase))
             .ToArray();
         if (supportedFiles.Length > 0)
             _viewModel.LoadFiles(supportedFiles);

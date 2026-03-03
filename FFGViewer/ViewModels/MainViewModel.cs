@@ -64,6 +64,7 @@ public partial class MainViewModel : ObservableObject
 
     private readonly IFfgFileService _ffgFileService;
     private readonly ICsvFileService _csvFileService;
+    private readonly IExcelFileService _excelFileService;
     private readonly ICsvExportService _csvExportService;
     private readonly IExcelExportService _excelExportService;
     private readonly List<(FfgData Data, SKColor LineColor, SKColor PeakColor)> _loadedSeries = [];
@@ -103,11 +104,13 @@ public partial class MainViewModel : ObservableObject
     public MainViewModel(
         IFfgFileService ffgFileService,
         ICsvFileService csvFileService,
+        IExcelFileService excelFileService,
         ICsvExportService csvExportService,
         IExcelExportService excelExportService)
     {
         _ffgFileService = ffgFileService;
         _csvFileService = csvFileService;
+        _excelFileService = excelFileService;
         _csvExportService = csvExportService;
         _excelExportService = excelExportService;
 
@@ -145,9 +148,11 @@ public partial class MainViewModel : ObservableObject
     {
         try
         {
-            var data = filePath.EndsWith(".csv", StringComparison.OrdinalIgnoreCase)
-                ? _csvFileService.Load(filePath)
-                : _ffgFileService.Load(filePath);
+            var data = filePath.EndsWith(".xlsx", StringComparison.OrdinalIgnoreCase)
+                ? _excelFileService.Load(filePath)
+                : filePath.EndsWith(".csv", StringComparison.OrdinalIgnoreCase)
+                    ? _csvFileService.Load(filePath)
+                    : _ffgFileService.Load(filePath);
             var resolvedTitle = ResolveSeriesName(data.Title);
             var resolvedData = data with { Title = resolvedTitle };
 
@@ -290,7 +295,7 @@ public partial class MainViewModel : ObservableObject
     {
         var dialog = new OpenFileDialog
         {
-            Filter = "対応ファイル (*.ffg;*.csv)|*.ffg;*.csv|FFG Files (*.ffg)|*.ffg|CSV Files (*.csv)|*.csv|All Files (*.*)|*.*",
+            Filter = "対応ファイル (*.ffg;*.csv;*.xlsx)|*.ffg;*.csv;*.xlsx|FFG Files (*.ffg)|*.ffg|CSV Files (*.csv)|*.csv|Excel Files (*.xlsx)|*.xlsx|All Files (*.*)|*.*",
             Multiselect = true
         };
         if (dialog.ShowDialog() != true) return;

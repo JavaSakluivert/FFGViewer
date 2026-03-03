@@ -20,6 +20,7 @@ public partial class App : Application
         services.AddSingleton<IFfgFileService, FfgFileService>();
         services.AddSingleton<ICsvFileService, CsvFileService>();
         services.AddSingleton<ICsvExportService, CsvExportService>();
+        services.AddSingleton<IExcelFileService, ExcelFileService>();
         services.AddSingleton<IExcelExportService, ExcelExportService>();
         services.AddSingleton<MainViewModel>();
         services.AddSingleton<MainWindow>();
@@ -34,7 +35,8 @@ public partial class App : Application
             var vm = _serviceProvider.GetRequiredService<MainViewModel>();
             var supportedFiles = e.Args
                 .Where(a => a.EndsWith(".ffg", StringComparison.OrdinalIgnoreCase)
-                         || a.EndsWith(".csv", StringComparison.OrdinalIgnoreCase))
+                         || a.EndsWith(".csv", StringComparison.OrdinalIgnoreCase)
+                         || a.EndsWith(".xlsx", StringComparison.OrdinalIgnoreCase))
                 .ToArray();
             if (supportedFiles.Length > 0)
                 vm.LoadFiles(supportedFiles);
